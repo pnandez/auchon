@@ -1,0 +1,21 @@
+.DS_Store
+.idea/
+.vscode/
+
+# Go
+auchon-api/bin/
+auchon-api/*.db
+auchon-api/*.db-*
+auchon-api/web/dist/*
+!auchon-api/web/dist/.gitkeep
+
+# Web
+auchon-web/node_modules/
+auchon-web/dist/
+auchon-web/dev-dist/
+auchon-web/coverage/
+
+.claude/settings.local.json
+
+# Separate repo, not part of this one
+auchon-app/
