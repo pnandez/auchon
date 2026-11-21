@@ -16,6 +16,9 @@ type EventPublisherSpy struct {
 
 func NewEventPublisherSpy() *EventPublisherSpy { return &EventPublisherSpy{} }
 
+// Reset forgets the published events and clears Fail, for the next scenario.
+func (s *EventPublisherSpy) Reset() { s.Events = nil; s.Fail = nil }
+
 func (s *EventPublisherSpy) Publish(_ context.Context, events ...event.Event) error {
 	if s.Fail != nil {
 		return s.Fail
@@ -58,6 +61,9 @@ type CommandBusSpy struct {
 }
 
 func NewCommandBusSpy() *CommandBusSpy { return &CommandBusSpy{} }
+
+// Reset forgets the dispatched commands and the results, for the next scenario.
+func (s *CommandBusSpy) Reset() { s.Commands = nil; s.Results = nil }
 
 func (s *CommandBusSpy) Dispatch(_ context.Context, cmd command.Command) error {
 	s.Commands = append(s.Commands, cmd)
