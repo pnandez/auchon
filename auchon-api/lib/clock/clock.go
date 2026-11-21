@@ -11,13 +11,13 @@ type Clock interface {
 // System is the production clock (UTC).
 type System struct{}
 
-func (System) Now() time.Time { return time.Time{} }
+func (System) Now() time.Time { return time.Now().UTC() }
 
 // Stub is the test kit clock: a fixed, settable time.
 type Stub struct{ now time.Time }
 
-func NewStub(at time.Time) *Stub { return &Stub{} }
+func NewStub(at time.Time) *Stub { return &Stub{now: at} }
 
-func (s *Stub) Now() time.Time           { return time.Time{} }
-func (s *Stub) Set(at time.Time)         {}
-func (s *Stub) Advance(d time.Duration) {}
+func (s *Stub) Now() time.Time          { return s.now }
+func (s *Stub) Set(at time.Time)        { s.now = at }
+func (s *Stub) Advance(d time.Duration) { s.now = s.now.Add(d) }

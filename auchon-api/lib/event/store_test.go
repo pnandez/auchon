@@ -23,16 +23,16 @@ CREATE TABLE domain_events (
 DROP TABLE domain_events;
 `)}}
 
-func openStore(t *testing.T) (*sql.DB, *event.SQLiteStore) {
+func openStore(t *testing.T) (*sql.DB, *event.Store) {
 	t.Helper()
 	conn, err := db.Open(filepath.Join(t.TempDir(), "test.db"))
 	test.AssertNoError(t, err)
 	t.Cleanup(func() { conn.Close() })
 	test.AssertNoError(t, db.Migrate(context.Background(), conn, eventsSchema))
-	return conn, event.NewSQLiteStore(conn)
+	return conn, event.NewStore(conn)
 }
 
-func TestSQLiteStore(t *testing.T) {
+func TestStore(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Given two events, When they are published", func(t *testing.T) {

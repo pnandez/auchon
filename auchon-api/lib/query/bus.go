@@ -1,7 +1,10 @@
 // Package query is the kernel's query bus. Each query has one handler that returns a result.
 package query
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 type Query interface {
 	QueryName() string
@@ -20,13 +23,40 @@ type Bus struct {
 	handlers map[string]func(ctx context.Context, q Query) (any, error)
 }
 
-func NewBus() *Bus { return &Bus{} }
+func NewBus() *Bus {
+	return &Bus{handlers: map[string]func(context.Context, Query) (any, error){}}
+}
 
 // Register binds h to the query named by Q's zero value. Registering a name twice panics.
-func Register[Q Query, R any](b *Bus, h Handler[Q, R]) {}
+func Register[Q Query, R any](b *Bus, h Handler[Q, R]) {
+	var zero Q
+	name := zero.QueryName()
+	if _, exists := b.handlers[name]; exists {
+		panic(fmt.Sprintf("query %s already has a handler", name))
+	}
+	b.handlers[name] = func(ctx context.Context, q Query) (any, error) {
+		typed, ok := q.(Q)
+		if !ok {
+			return nil, fmt.Errorf("query %s: got %T", name, q)
+		}
+		return h.Execute(ctx, typed)
+	}
+}
 
 // Ask runs q's handler and returns its result as R.
 func Ask[R any](ctx context.Context, b *Bus, q Query) (R, error) {
 	var zero R
-	return zero, nil
+	handle, ok := b.handlers[q.QueryName()]
+	if !ok {
+		return zero, NoHandlerError{Name: q.QueryName()}
+	}
+	result, err := handle(ctx, q)
+	if err != nil {
+		return zero, err
+	}
+	typed, ok := result.(R)
+	if !ok {
+		return zero, fmt.Errorf("query %s: result is %T, not %T", q.QueryName(), result, zero)
+	}
+	return typed, nil
 }

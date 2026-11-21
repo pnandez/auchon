@@ -2,6 +2,11 @@
 // mapper. Domain errors embed Base and implement exactly one category marker.
 package errors
 
+import (
+	stderrors "errors"
+	"net/http"
+)
+
 // Base is embedded in every domain error.
 type Base struct {
 	Message string
@@ -31,10 +36,42 @@ const (
 
 // CategoryOf returns the category of err (searching wrapped errors), or CategoryInternal.
 func CategoryOf(err error) string {
-	return ""
+	var (
+		notFound     NotFound
+		validation   ValidationError
+		noAccess     NoAccess
+		unauthorized Unauthorized
+		duplicate    Duplicate
+	)
+	switch {
+	case stderrors.As(err, &notFound):
+		return CategoryNotFound
+	case stderrors.As(err, &validation):
+		return CategoryValidation
+	case stderrors.As(err, &noAccess):
+		return CategoryNoAccess
+	case stderrors.As(err, &unauthorized):
+		return CategoryUnauthorized
+	case stderrors.As(err, &duplicate):
+		return CategoryDuplicate
+	default:
+		return CategoryInternal
+	}
+}
+
+var statusByCategory = map[string]int{
+	CategoryNotFound:     http.StatusNotFound,
+	CategoryValidation:   http.StatusBadRequest,
+	CategoryNoAccess:     http.StatusForbidden,
+	CategoryUnauthorized: http.StatusUnauthorized,
+	CategoryDuplicate:    http.StatusConflict,
+	CategoryInternal:     http.StatusInternalServerError,
 }
 
 // HTTPStatus maps err's category to an HTTP status; 500 when it has none, 200 for nil.
 func HTTPStatus(err error) int {
-	return 0
+	if err == nil {
+		return http.StatusOK
+	}
+	return statusByCategory[CategoryOf(err)]
 }

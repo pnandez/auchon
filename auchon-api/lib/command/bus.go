@@ -5,6 +5,9 @@ package command
 import (
 	"context"
 	"database/sql"
+	"fmt"
+
+	"github.com/auchon/auchon-api/lib/db"
 )
 
 type Command interface {
@@ -32,13 +35,32 @@ type Bus struct {
 }
 
 func NewBus(conn *sql.DB) *Bus {
-	return &Bus{}
+	return &Bus{conn: conn, handlers: map[string]func(context.Context, Command) error{}}
 }
 
 // Register binds h to the command named by C's zero value. Registering a name twice panics.
-func Register[C Command](b *Bus, h Handler[C]) {}
+func Register[C Command](b *Bus, h Handler[C]) {
+	var zero C
+	name := zero.CommandName()
+	if _, exists := b.handlers[name]; exists {
+		panic(fmt.Sprintf("command %s already has a handler", name))
+	}
+	b.handlers[name] = func(ctx context.Context, cmd Command) error {
+		typed, ok := cmd.(C)
+		if !ok {
+			return fmt.Errorf("command %s: got %T", name, cmd)
+		}
+		return h.Execute(ctx, typed)
+	}
+}
 
 // Dispatch runs the command's handler inside a transaction.
 func (b *Bus) Dispatch(ctx context.Context, cmd Command) error {
-	return nil
+	handle, ok := b.handlers[cmd.CommandName()]
+	if !ok {
+		return NoHandlerError{Name: cmd.CommandName()}
+	}
+	return db.WithTx(ctx, b.conn, func(ctx context.Context) error {
+		return handle(ctx, cmd)
+	})
 }

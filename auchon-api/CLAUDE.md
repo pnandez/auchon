@@ -40,7 +40,7 @@ The symbols this repo uses for each capability in `go/shared-kernel.md`:
 | Capability | Symbol |
 |---|---|
 | Event recorder / base event | `event.Recorder` / `event.Base` (`lib/event`) |
-| Event publisher | `event.Publisher` port; `sqlite` store in `lib/event` |
+| Event publisher | `event.Publisher` port; `event.NewStore(conn)` writes `domain_events` (`lib/event`) |
 | Base domain error / categories | `errors.Base`; `IsNotFound()`, `IsValidationError()`, `IsNoAccess()`, `IsUnauthorized()`, `IsDuplicate()` (`lib/errors`) |
 | Error → status mapper | `errors.HTTPStatus(err)` |
 | Request user | n/a (no auth) |
