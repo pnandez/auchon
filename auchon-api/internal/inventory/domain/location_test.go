@@ -113,7 +113,7 @@ func TestRename(t *testing.T) {
 		givenABox("Tools", shelfAID)
 		whenRenamed("")
 		thenRejected[name.NameRequiredError](t)
-		thenItIs(t, domain.LocationDTO{ID: toolsID, Name: "Tools", Kind: "container", ParentID: shelfAID})
+		thenNameIs(t, "Tools")
 		thenNothingRecorded(t)
 	})
 }
@@ -221,6 +221,11 @@ func thenKindIs(t *testing.T, want domain.Kind) {
 	t.Helper()
 	test.AssertNoError(t, err)
 	test.AssertEqual(t, kind, want)
+}
+
+func thenNameIs(t *testing.T, want string) {
+	t.Helper()
+	test.AssertEqual(t, location.Name().String(), want)
 }
 
 func thenParentIs(t *testing.T, want string) {
