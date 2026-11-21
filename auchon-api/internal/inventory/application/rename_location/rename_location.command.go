@@ -1,5 +1,7 @@
 package rename_location
 
+import "github.com/auchon/auchon-api/internal/inventory/domain"
+
 const CommandName = "inventory.RenameLocation"
 
 type RenameLocationCommand struct {
@@ -10,4 +12,6 @@ type RenameLocationCommand struct {
 func (RenameLocationCommand) CommandName() string { return CommandName }
 
 // GuardRenameLocationIsValid validates the input: the location id is a UUID.
-func GuardRenameLocationIsValid(cmd RenameLocationCommand) error { return nil }
+func GuardRenameLocationIsValid(cmd RenameLocationCommand) error {
+	return domain.GuardLocationID(cmd.LocationID)
+}

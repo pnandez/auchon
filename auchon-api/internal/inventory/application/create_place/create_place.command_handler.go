@@ -18,4 +18,16 @@ func NewHandler(storer *domain.LocationStorer, publisher event.Publisher, clock 
 	return &Handler{storer: storer, publisher: publisher, clock: clock}
 }
 
-func (h *Handler) Execute(ctx context.Context, cmd CreatePlaceCommand) error { return nil }
+func (h *Handler) Execute(ctx context.Context, cmd CreatePlaceCommand) error {
+	if err := GuardCreatePlaceIsValid(cmd); err != nil {
+		return err
+	}
+	place, err := domain.CreatePlace(cmd.LocationID, cmd.Name, h.clock.Now())
+	if err != nil {
+		return err
+	}
+	if err := h.storer.Store(ctx, place); err != nil {
+		return err
+	}
+	return h.publisher.Publish(ctx, place.PullEvents()...)
+}
