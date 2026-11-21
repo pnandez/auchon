@@ -41,8 +41,8 @@ The symbols this repo uses for each capability in `go/shared-kernel.md`:
 |---|---|
 | Event recorder / base event | `event.Recorder` / `event.Base` (`lib/event`) |
 | Event publisher | `event.Publisher` port; `sqlite` store in `lib/event` |
-| Base domain error / categories | `errs.Base`; `IsNotFound()`, `IsValidationError()`, `IsNoAccess()`, `IsUnauthorized()`, `IsDuplicate()` (`lib/errs`) |
-| Error → status mapper | `errs.HTTPStatus(err)` |
+| Base domain error / categories | `errors.Base`; `IsNotFound()`, `IsValidationError()`, `IsNoAccess()`, `IsUnauthorized()`, `IsDuplicate()` (`lib/errors`) |
+| Error → status mapper | `errors.HTTPStatus(err)` |
 | Request user | n/a (no auth) |
 | Command bus / query bus | `command.Bus` / `query.Bus` (`lib/command`, `lib/query`) |
 | Clock | `clock.Clock` (`lib/clock`) |
