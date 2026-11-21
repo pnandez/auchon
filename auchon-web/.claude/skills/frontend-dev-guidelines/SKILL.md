@@ -1,373 +1,173 @@
 ---
 name: frontend-dev-guidelines
-description: "You are a senior frontend engineer operating under strict architectural and performance standards. Use when creating components or pages, adding new features, or fetching or mutating data."
-risk: unknown
-source: community
-date_added: "2026-02-27"
+description: How Auchon's web app (auchon-web) code must be written — offline-first React + TypeScript with Dexie reads, command-based writes, shadcn/ui + Tailwind and TanStack Router. Use when creating components, pages or routes, adding a feature, reading local data or mutating it.
 ---
 
+# Frontend Development Guidelines (auchon-web)
 
-# Frontend Development Guidelines
+**React · TypeScript · Offline-first · shadcn/ui + Tailwind · TanStack Router**
 
-**(React · TypeScript · Suspense-First · Production-Grade)**
+Applies to `auchon-web/` only. Paths resolve relative to `auchon-web/src/`. Adapted from the
+AI-skills `frontend-dev-guidelines` skill.
 
-## Inmobil scope
+## 1. Feasibility check (FFCI)
 
-Applies to **`inmobil-app/app/` only** — the Vite + React + MUI v7 + TanStack Router sub-app (main + CRM). Does **not** apply to `inmobil-app/landing/` (Astro) or `inmobil-api/` (Go). All path aliases and file-structure examples below resolve relative to `inmobil-app/app/src/`.
+Before building a component, page or feature, score it 1–5 on each dimension:
 
-You are a **senior frontend engineer** operating under strict architectural and performance standards.
+| Dimension | Question |
+|---|---|
+| Architectural fit | Does it follow the offline-first data flow and the feature structure? |
+| Complexity load | How complex are its state, data and interactions? |
+| Performance risk | Does it add re-renders, bundle size or layout shift? |
+| Reusability | Can it be reused without changes? |
+| Maintenance cost | How hard will it be to reason about in 6 months? |
 
-Your goal is to build **scalable, predictable, and maintainable React applications** using:
+`FFCI = (Fit + Reusability + Performance) − (Complexity + Maintenance)`, range −5 to +15.
+10–15 proceed · 6–9 proceed with care · 3–5 simplify or split · ≤ 2 redesign.
 
-* Suspense-first data fetching
-* Feature-based code organization
-* Strict TypeScript discipline
-* Performance-safe defaults
+## 2. Core doctrine (non-negotiable)
 
-This skill defines **how frontend code must be written**, not merely how it *can* be written.
+### Offline first
 
----
+- Components **read only from IndexedDB**, through a feature hook built on Dexie's
+  `useLiveQuery`. The UI behaves the same with or without network
+- Components **never call the API**. Only `src/sync/` talks to the server
+- Every write is a **command** from `src/commands/` (local apply + outbox in one Dexie
+  transaction). No direct table writes from components or hooks
+- Ids are UUIDv7 (`v7()` from `uuid`), created in the command, never by the server
+- Quantities change by delta (`adjustItemQuantity(id, -2)`), never "set to N"
 
-## 1. Frontend Feasibility & Complexity Index (FFCI)
+### Feature-based organisation
 
-Before implementing a component, page, or feature, assess feasibility.
+- Feature code lives in `features/<feature>/`; reusable primitives in `components/`
+- shadcn primitives live in `components/ui/` (generated, adjust freely, no domain logic)
+- A feature never imports another feature's internals, only its `index.ts`
 
-### FFCI Dimensions (1–5)
+### TypeScript is strict
 
-| Dimension             | Question                                                         |
-| --------------------- | ---------------------------------------------------------------- |
-| **Architectural Fit** | Does this align with feature-based structure and Suspense model? |
-| **Complexity Load**   | How complex is state, data, and interaction logic?               |
-| **Performance Risk**  | Does it introduce rendering, bundle, or CLS risk?                |
-| **Reusability**       | Can this be reused without modification?                         |
-| **Maintenance Cost**  | How hard will this be to reason about in 6 months?               |
+- No `any`; explicit return types on exported functions; `import type` for types
+- API types come from `src/api/` (generated from OpenAPI), never hand-written
 
-### Score Formula
+## 3. Checklists
 
-```
-FFCI = (Architectural Fit + Reusability + Performance) − (Complexity + Maintenance Cost)
-```
+### New component
 
-**Range:** `-5 → +15`
+- [ ] Function component with an explicit `Props` type
+- [ ] Reads data through a feature hook, never Dexie or `fetch` directly
+- [ ] Writes through a command, never a table
+- [ ] Handles the "not loaded yet" state (`useLiveQuery` returns `undefined` on first render)
+  with a skeleton, and the empty state with a message
+- [ ] Built from shadcn/ui primitives + Tailwind classes
+- [ ] Tap targets at least 44px (`h-11`/`min-h-11`), usable one-handed
+- [ ] Accessible names on every control (labels, `aria-label` on icon buttons)
 
-### Interpretation
+### New feature
 
-| FFCI      | Meaning    | Action            |
-| --------- | ---------- | ----------------- |
-| **10–15** | Excellent  | Proceed           |
-| **6–9**   | Acceptable | Proceed with care |
-| **3–5**   | Risky      | Simplify or split |
-| **≤ 2**   | Poor       | Redesign          |
+- [ ] `features/<feature>/` with `components/`, `hooks/` and an `index.ts` of public exports
+- [ ] Commands it needs in `commands/` (one module per command, with its test)
+- [ ] Route files in `routes/` stay thin: params/search parsing + the feature's page component
+- [ ] Tests written first and shown for approval (see `frontend-testing`)
 
----
+## 4. Imports
 
-## 2. Core Architectural Doctrine (Non-Negotiable)
+- `@/` → `src/` (configured in `tsconfig` and `vite.config.ts`). Use it for anything beyond
+  the current folder; no `../../`
 
-### 1. Suspense Is the Default
+## 5. Component structure
 
-* `useSuspenseQuery` is the **primary** data-fetching hook
-* No `isLoading` conditionals
-* No early-return spinners
+Order inside a component: props type → hooks → derived values → handlers → render.
+Named exports (`export function PlaceCard`); route files export `Route`.
+Use `useMemo` / `useCallback` only where they measurably help (heavy derivations, handlers
+passed to memoised children), not by default.
 
-### 2. Lazy Load Anything Heavy
+## 6. Data
 
-* Routes
-* Feature entry components
-* Data grids, charts, editors
-* Large dialogs or modals
-
-### 3. Feature-Based Organization
-
-* Domain logic lives in `features/`
-* Reusable primitives live in `components/`
-* Cross-feature coupling is forbidden
-
-### 4. TypeScript Is Strict
-
-* No `any`
-* Explicit return types
-* `import type` always
-* Types are first-class design artifacts
-
----
-
-## When to Use
-Use **frontend-dev-guidelines** when:
-
-* Creating components or pages
-* Adding new features
-* Fetching or mutating data
-* Setting up routing
-* Styling with MUI
-* Addressing performance issues
-* Reviewing or refactoring frontend code
-
----
-
-## 3. Quick Start Checklists
-
-### New Component Checklist
-
-* [ ] `React.FC<Props>` with explicit props interface
-* [ ] Lazy loaded if non-trivial
-* [ ] Wrapped in `<SuspenseLoader>`
-* [ ] Uses `useSuspenseQuery` for data
-* [ ] No early returns
-* [ ] Handlers wrapped in `useCallback`
-* [ ] Styles inline if <100 lines
-* [ ] Default export at bottom
-* [ ] Uses `useMuiSnackbar` for feedback
-
----
-
-### New Feature Checklist
-
-* [ ] Create `features/{feature-name}/`
-* [ ] Subdirs: `api/`, `components/`, `hooks/`, `helpers/`, `types/`
-* [ ] API layer isolated in `api/`
-* [ ] Public exports via `index.ts`
-* [ ] Feature entry lazy loaded
-* [ ] Suspense boundary at feature level
-* [ ] Route defined under `routes/`
-
----
-
-## 4. Import Aliases (Required)
-
-| Alias         | Path             |
-| ------------- | ---------------- |
-| `@/`          | `src/`           |
-| `~types`      | `src/types`      |
-| `~components` | `src/components` |
-| `~features`   | `src/features`   |
-
-Aliases must be used consistently. Relative imports beyond one level are discouraged.
-
----
-
-## 5. Component Standards
-
-### Required Structure Order
-
-1. Types / Props
-2. Hooks
-3. Derived values (`useMemo`)
-4. Handlers (`useCallback`)
-5. Render
-6. Default export
-
-### Lazy Loading Pattern
+### Reading
 
 ```ts
-const HeavyComponent = React.lazy(() => import('./HeavyComponent'));
-```
+// features/locations/hooks/useChildLocations.ts
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '@/db'
+import type { LocalLocation } from '@/db'
 
-Always wrapped in `<SuspenseLoader>`.
-
----
-
-## 6. Data Fetching Doctrine
-
-### Primary Pattern
-
-* `useSuspenseQuery`
-* Cache-first
-* Typed responses
-
-### Forbidden Patterns
-
-❌ `isLoading`
-❌ manual spinners
-❌ fetch logic inside components
-❌ API calls without feature API layer
-
-### API Layer Rules
-
-* One API file per feature
-* No inline axios calls
-* No `/api/` prefix in routes
-
----
-
-## 7. Routing Standards (TanStack Router)
-
-* Folder-based routing only
-* Lazy load route components
-* Breadcrumb metadata via loaders
-
-```ts
-export const Route = createFileRoute('/my-route/')({
-  component: MyPage,
-  loader: () => ({ crumb: 'My Route' }),
-});
-```
-
----
-
-## 8. Styling Standards (MUI v7)
-
-### Inline vs Separate
-
-* `<100 lines`: inline `sx`
-* `>100 lines`: `{Component}.styles.ts`
-
-### Grid Syntax (v7 Only)
-
-```tsx
-<Grid size={{ xs: 12, md: 6 }} /> // ✅
-<Grid xs={12} md={6} />          // ❌
-```
-
-Theme access must always be type-safe.
-
----
-
-## 9. Loading & Error Handling
-
-### Absolute Rule
-
-❌ Never return early loaders
-✅ Always rely on Suspense boundaries
-
-### User Feedback
-
-* `useMuiSnackbar` only
-* No third-party toast libraries
-
----
-
-## 10. Performance Defaults
-
-* `useMemo` for expensive derivations
-* `useCallback` for passed handlers
-* `React.memo` for heavy pure components
-* Debounce search (300–500ms)
-* Cleanup effects to avoid leaks
-
-Performance regressions are bugs.
-
----
-
-## 11. TypeScript Standards
-
-* Strict mode enabled
-* No implicit `any`
-* Explicit return types
-* JSDoc on public interfaces
-* Types colocated with feature
-
----
-
-## 12. Canonical File Structure
-
-```
-src/
-  features/
-    my-feature/
-      api/
-      components/
-      hooks/
-      helpers/
-      types/
-      index.ts
-
-  components/
-    SuspenseLoader/
-    CustomAppBar/
-
-  routes/
-    my-route/
-      index.tsx
-```
-
----
-
-## 13. Canonical Component Template
-
-```ts
-import React, { useState, useCallback } from 'react';
-import { Box, Paper } from '@mui/material';
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { featureApi } from '../api/featureApi';
-import type { FeatureData } from '~types/feature';
-
-interface MyComponentProps {
-  id: number;
-  onAction?: () => void;
+export function useChildLocations(parentId: string): LocalLocation[] | undefined {
+  return useLiveQuery(
+    () => db.locations.where({ parentId }).filter((l) => !l.removed).sortBy('name'),
+    [parentId],
+  )
 }
-
-export const MyComponent: React.FC<MyComponentProps> = ({ id, onAction }) => {
-  const [state, setState] = useState('');
-
-  const { data } = useSuspenseQuery<FeatureData>({
-    queryKey: ['feature', id],
-    queryFn: () => featureApi.getFeature(id),
-  });
-
-  const handleAction = useCallback(() => {
-    setState('updated');
-    onAction?.();
-  }, [onAction]);
-
-  return (
-    <Box sx={{ p: 2 }}>
-      <Paper sx={{ p: 3 }}>
-        {/* Content */}
-      </Paper>
-    </Box>
-  );
-};
-
-export default MyComponent;
 ```
 
----
+- One hook per question the UI asks; the query lives in the hook, not the component
+- Hooks return `undefined` while loading; components show a skeleton for it
+- Search is local: filter Dexie in a hook, debounce the input (300 ms)
 
-## 14. Anti-Patterns (Immediate Rejection)
+### Writing
 
-❌ Early loading returns
-❌ Feature logic in `components/`
-❌ Shared state via prop drilling instead of hooks
-❌ Inline API calls
-❌ Untyped responses
-❌ Multiple responsibilities in one component
+```ts
+import { addItem } from '@/commands/addItem'
 
----
+await addItem({ locationId, name, quantity: 1 }) // applies locally + queues for sync
+```
 
-## 15. Integration With Other Skills
+- Commands validate their input and throw a typed error the UI can show
+- Show feedback with shadcn's `sonner` toast; no other toast library
 
-* **frontend-design** → Visual systems & aesthetics
-* **page-cro** → Layout hierarchy & conversion logic
-* **analytics-tracking** → Event instrumentation
-* **backend-dev-guidelines** → API contract alignment
-* **error-tracking** → Runtime observability
+### Forbidden
 
----
+❌ `fetch` / API client in components, hooks or commands (only `src/sync/`)
+❌ Writing to `db.*` outside `src/commands/` and `src/sync/`
+❌ "Set quantity to N" commands
+❌ Server-generated ids
 
-## 16. Operator Validation Checklist
+## 7. Routing (TanStack Router, file-based)
 
-Before finalizing code:
+- Routes in `src/routes/`; `routeTree.gen.ts` is generated by the Vite plugin (commit it, never
+  edit it)
+- `autoCodeSplitting` lazy-loads route components; no manual `React.lazy` for routes
+- Typed params and search: validate search params with `validateSearch`
+- Navigate with `<Link>` / `useNavigate`, never `window.location`
 
-* [ ] FFCI ≥ 6
-* [ ] Suspense used correctly
-* [ ] Feature boundaries respected
-* [ ] No early returns
-* [ ] Types explicit and correct
-* [ ] Lazy loading applied
-* [ ] Performance safe
+```ts
+export const Route = createFileRoute('/locations/$locationId')({
+  component: LocationRoute,
+})
 
----
+function LocationRoute() {
+  const { locationId } = Route.useParams()
+  return <LocationPage locationId={locationId} />
+}
+```
 
-## 17. Skill Status
+## 8. Styling (shadcn/ui + Tailwind v4)
 
-**Status:** Stable, opinionated, and enforceable
-**Intended Use:** Production React codebases with long-term maintenance horizons
+- Add primitives with `npx shadcn@latest add <component>`; they land in `components/ui/`
+- Style with Tailwind utility classes and the theme tokens (`bg-background`,
+  `text-muted-foreground`, `border`, `bg-primary`…); no hard-coded colours
+- Merge conditional classes with `cn()` from `@/lib/utils`
+- Variants with `cva` (as shadcn does), not ad-hoc ternaries across many classes
+- Mobile first: base classes for phones, `sm:`/`md:` for larger screens
+- Dark mode through the `.dark` tokens in `index.css`
 
+## 9. Performance
 
-### When to Use
-This skill is applicable to execute the workflow or actions described in the overview.
+- Keep Dexie queries indexed (`where` on indexed fields before `filter`)
+- `React.memo` only for heavy pure list rows that re-render often
+- Debounce search input; clean up effects and subscriptions
 
-## Limitations
-- Use this skill only when the task clearly matches the scope described above.
-- Do not treat the output as a substitute for environment-specific validation, testing, or expert review.
-- Stop and ask for clarification if required inputs, permissions, safety boundaries, or success criteria are missing.
+## 10. Anti-patterns (reject)
+
+❌ Network calls outside `src/sync/`
+❌ Feature logic in `components/` or `components/ui/`
+❌ Prop drilling shared state instead of a hook
+❌ Untyped data or hand-written API types
+❌ One component with several responsibilities
+❌ Implementation written before its tests were shown and approved
+
+## 11. Before finishing
+
+- [ ] FFCI ≥ 6
+- [ ] Works offline (reads from Dexie, writes through commands)
+- [ ] Feature boundaries respected
+- [ ] Types explicit
+- [ ] `npm test` and `npm run build` pass

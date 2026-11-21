@@ -1,7 +1,15 @@
 # auchon-web
 
-Auchon's offline-first PWA: React + TypeScript (Vite), IndexedDB through Dexie. Product rules
-live in the root `../CLAUDE.md`; the sync design in `../auchon-api/docs/adr/0001-*.md`.
+Auchon's offline-first PWA. Product rules live in the root `../CLAUDE.md`; the sync design in
+`../auchon-api/docs/adr/0001-*.md`.
+
+## Stack
+
+- React 19 + TypeScript, Vite, `vite-plugin-pwa` (service worker, manifest)
+- TanStack Router, file-based (`src/routes/`, generated `src/routeTree.gen.ts`)
+- shadcn/ui + Tailwind v4 (`src/components/ui/`, `cn()` in `src/lib/utils.ts`)
+- Dexie + `dexie-react-hooks` for IndexedDB
+- Vitest + React Testing Library + `fake-indexeddb`
 
 ## Structure
 
@@ -11,7 +19,9 @@ live in the root `../CLAUDE.md`; the sync design in `../auchon-api/docs/adr/0001
   appends its envelope to `outbox` in **one Dexie transaction**
 - `src/sync/`: push/pull engine and sync status
 - `src/features/<feature>/`: screens and components (locations, items, search)
-- `src/app/`: shell, routes, sync badge
+- `src/routes/`: TanStack Router route files (thin: params + the feature's page)
+- `src/app/`: router setup, shell, sync badge
+- `src/components/ui/`: shadcn primitives (`npx shadcn@latest add <name>`)
 - `src/api/`: types generated from `../auchon-api/docs/openapi/openapi.yaml`
 
 ## Rules
@@ -29,8 +39,9 @@ live in the root `../CLAUDE.md`; the sync design in `../auchon-api/docs/adr/0001
 
 ## Skills
 
-- `.claude/skills/frontend-dev-guidelines/`: component, page and data rules
+- `.claude/skills/frontend-dev-guidelines/`: component, page, routing, styling and data rules
 - `.claude/skills/frontend-testing/`: how to write the Vitest + RTL tests
+- Both are adapted from AI-skills for this stack; follow these copies, not the originals
 
 ## Commands
 
